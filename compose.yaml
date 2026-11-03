@@ -1,0 +1,15 @@
+services:
+  aggregate:
+    build: .
+    image: aggregate:local
+    env_file:
+      - path: .env
+        required: false
+    # Must be able to write ./data; create it first with: mkdir -p data
+    user: "${AGGREGATE_UID:-1000}:${AGGREGATE_GID:-1000}"
+    ports:
+      # Loopback by default: put a relay or reverse proxy in front, never the open internet.
+      - "${AGGREGATE_BIND:-127.0.0.1}:${AGGREGATE_PORT:-8000}:8000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
