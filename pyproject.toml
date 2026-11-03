@@ -70,7 +70,7 @@ skip_covered = true
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
+    "httpx2>=2.16.0",
     "hypothesis>=6.170.14",
     "mypy>=2.4.1",
     "pre-commit>=4.7.0",

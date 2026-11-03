@@ -48,7 +48,7 @@ Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2 with Alembic, and SQLite in WAL
 | Database | SQLite, WAL mode | Plenty for one household; Postgres stays a config change |
 | CLI | Typer | Admin and cron commands |
 | Server | uvicorn | Runs the FastAPI app in the container |
-| Tests | pytest, pytest-cov, Hypothesis, httpx | Fixture tests plus property tests for the parsers; httpx backs FastAPI's TestClient |
+| Tests | pytest, pytest-cov, Hypothesis, httpx2 | Fixture tests plus property tests for the parsers; httpx2 backs FastAPI's TestClient |
 | Lint and format | ruff | One fast tool for both |
 | Git hooks | pre-commit, gitleaks | Fast checks and secret scanning before anything is committed |
 | Types | mypy, strict on `src/` | Catches money and None bugs before runtime |
