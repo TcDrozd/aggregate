@@ -253,7 +253,7 @@ Six tables: `raw_events` is append-only, `observations` are derived and rebuilda
 | `match_score` | real, null | rule matches only |
 | `linked_at` | datetime, UTC |  |
 
-Indexes: `raw_events(parse_status)`, `observations(account_id, local_date)`, `observations(merchant_key)`, `transactions(account_id, local_date)`, `transactions(status)`.
+Indexes: `raw_events(parse_status)`, `observations(account_id, local_date)`, `observations(merchant_key)`, `transactions(account_id, local_date)`, `transactions(status)`, `transaction_links(transaction_id)`.
 
 ## Connector contract
 
