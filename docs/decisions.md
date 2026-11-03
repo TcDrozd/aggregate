@@ -6,7 +6,7 @@ Agreed changes to, and interpretations of, `docs/SPEC.md`. Newest last. `docs/SP
 
 **D1. The project is named `aggregate` everywhere.** "finance" in Spec v1 was a placeholder. Package `src/aggregate/`, CLI `aggregate`, image `aggregate`, env prefix `AGGREGATE_`, database `/data/aggregate.db`.
 
-**D2. Three dependencies added beyond the stack table.** `uvicorn` (the entrypoint serves with it), `httpx` (FastAPI's TestClient requires it) and `pre-commit` (`make setup` installs the hooks). gitleaks runs as a pre-commit hook and a checksum-verified binary in CI, not as a Python dependency.
+**D2. Three dependencies added beyond the stack table.** `uvicorn` (the entrypoint serves with it), `httpx` (FastAPI's TestClient requires it; replaced by `httpx2` in D22) and `pre-commit` (`make setup` installs the hooks). gitleaks runs as a pre-commit hook and a checksum-verified binary in CI, not as a Python dependency.
 
 **D3. Bootstrap and review flow.** The walking skeleton is the one commit pushed straight to `main`; an empty repository has nothing to open a pull request against, and branch protection can only require checks that have already run. Protection goes on once its CI is green. After that, every step is a pull request that Trevor reviews and merges.
 
@@ -45,3 +45,7 @@ Agreed changes to, and interpretations of, `docs/SPEC.md`. Newest last. `docs/SP
 **D20. Deployment target: Docker on a Linux host**, behind a relay on the private network. The image runs as uid 1000; compose publishes on `127.0.0.1` by default and takes `AGGREGATE_UID`/`AGGREGATE_GID` for the bind mount's owner. The entrypoint stops with a clear message if `/data` isn't writable. Python 3.13 image.
 
 **D21. The skeleton's Docker smoke test calls `/healthz` only.** POSTing `purchase.json` joins the smoke test with the ingest step, when the route exists.
+
+## 2026-11-03 · After the skeleton
+
+**D22. `httpx2` replaces `httpx` as the test client's HTTP library.** Starlette now deprecates `httpx` in its TestClient in favour of `httpx2`, Pydantic's maintained continuation of the same library under a new name; `httpx` itself has seen little activity. It's a dev-only dependency with the same API, and switching this early costs nothing.
