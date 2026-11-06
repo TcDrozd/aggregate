@@ -260,39 +260,44 @@ Indexes: `raw_events(parse_status)`, `observations(account_id, local_date)`, `ob
 A connector turns one source's payloads into observations and nothing else: no database access, no reconciliation.
 
 ```python
+type Payload = Mapping[str, JsonValue]  # read-only: raw_events keeps it verbatim
+
 class Connector(Protocol):
     name: ClassVar[str]            # "wallet_notification", also the URL segment
     parser_version: ClassVar[int]  # bump on any parsing change
 
-    def dedupe_key(self, payload: dict) -> str: ...
-    def parse(self, payload: dict) -> ParseResult: ...
+    def dedupe_key(self, payload: Payload) -> str: ...
+    def parse(self, payload: Payload) -> ParseResult: ...
 
-class ParseResult(BaseModel):
-    status: Literal["parsed", "ignored", "unclassified", "error"]
+class ParseResult(BaseModel):      # frozen
+    status: ParseOutcome           # "parsed", "ignored", "unclassified", "error"
     reason: str | None = None
     observations: list[ObservationIn] = []
 
-class ObservationIn(BaseModel):
+class ObservationIn(BaseModel):    # frozen, unknown fields rejected
     account_ref: str               # resolved through account_links
     external_id: str
     supersedes_external_id: str | None = None
-    status: Literal["pending", "posted"]
+    status: ObservationStatus      # "pending", "posted"
     kind: Kind
-    amount_cents: int
-    currency: str = "USD"
-    occurred_at: datetime | None = None
+    amount_cents: StrictInt        # 12.0, "12" and True are rejected
+    currency: str = "USD"          # three capital letters
+    occurred_at: AwareDatetime | None = None
     local_date: date
     posted_on: date | None = None
     merchant_display: str | None = None
     merchant_key: str | None = None
     location: str | None = None
     category_hint: str | None = None
-    extra: dict | None = None
+    extra: dict[str, JsonValue] | None = None
 ```
 
 - **Pure:** the same payload and parser version always give the same result, so real captures double as test fixtures.
+- **Consistent results:** `parsed` carries one or more observations with unique `external_id`s; any other outcome carries a reason and no observations.
+- **Signs by kind:** a purchase or fee is never positive, and a refund or cashback never negative. Other kinds can go either way, depending on the account.
+- **Shared helpers:** `money.parse_dollars` turns dollar text into exact integer cents, and `merchants.merchant_key` implements Wallet rule 8 for every connector.
 - **Accounts by reference:** connectors return `account_ref`; the pipeline resolves it through `account_links`. An unknown ref sets the raw event to `unmapped_account`.
-- **Registry:** `name` maps to the connector. Push connectors answer at `POST /ingest/CONNECTOR`; pull connectors (Phases 2 and 3) add a `fetch()` that feeds payloads into the same pipeline.
+- **Registry:** `name` maps to the connector; names match `^[a-z][a-z0-9_]*$` and `parser_version` starts at 1. Push connectors answer at `POST /ingest/CONNECTOR`; pull connectors (Phases 2 and 3) add a `fetch()` that feeds payloads into the same pipeline.
 - **Pipeline, one DB transaction per payload:** compute the dedupe key, insert the raw event (an existing key returns the stored result), parse, resolve accounts, write observations, reconcile, commit.
 - **Failures:** an exception in `parse()` sets the raw event to `error` with the exception class and message, and writes no observations.
 

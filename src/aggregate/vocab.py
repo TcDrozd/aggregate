@@ -9,6 +9,9 @@ from typing import Literal, get_args
 AccountType = Literal["credit_card", "checking", "savings", "other"]
 LinkRole = Literal["ledger", "signal"]
 ParseStatus = Literal["pending", "parsed", "ignored", "unclassified", "unmapped_account", "error"]
+# The part of ParseStatus a connector may return: `pending` is before parsing, and only the
+# pipeline knows whether an account is mapped.
+ParseOutcome = Literal["parsed", "ignored", "unclassified", "error"]
 ObservationStatus = Literal["pending", "posted"]
 TransactionStatus = Literal["pending", "posted", "voided"]
 MatchMethod = Literal["created", "same_external_id", "supersedes", "rule_match", "manual"]
