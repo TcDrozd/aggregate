@@ -25,7 +25,7 @@ The Shortcut sends each Wallet notification as one flat JSON object. The connect
 ```
 
 - **Purchase:** `Body` is a dollar amount like `$12.34` or `$1,234.56`, and `Subtitle` names the merchant, optionally followed by `, City, ST`. `Title` names the card, and `Date` must be ISO 8601 with an offset.
-- **Ignored:** notifications from other apps, Daily Cash deposits, Savings notices, weekly and monthly spending summaries, and Apple Pay order tracking.
+- **Ignored:** notifications from other apps, Daily Cash deposits, Savings notices, weekly and monthly spending summaries, Apple Pay order tracking, card verification prompts, and upcoming-charge predictions.
 - **Everything else** is stored and sent to review.
 
 ## Quickstart (Docker)

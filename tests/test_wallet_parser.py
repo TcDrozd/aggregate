@@ -52,6 +52,8 @@ EXPECTED: dict[str, Purchase | tuple[str, str]] = {
     "savings_interest": ("ignored", "savings"),
     "spending_summary": ("ignored", "spending_summary"),
     "order_tracking": ("ignored", "order_tracking"),
+    "card_verification": ("ignored", "card_verification"),
+    "upcoming_charges": ("ignored", "upcoming_charges"),
 }
 
 
@@ -212,6 +214,8 @@ def test_an_empty_payload_is_not_from_wallet() -> None:
         ({"Title": "Order shipped"}, "order_tracking"),
         ({"Title": "Order ready for pickup"}, "order_tracking"),
         ({"Title": "Problem with your order"}, "order_tracking"),
+        ({"Title": "Verification Required", "Subtitle": ""}, "card_verification"),
+        ({"Subtitle": "Upcoming Transactions"}, "upcoming_charges"),
     ],
 )
 def test_known_non_transactions_are_ignored(fields: dict[str, str], reason: str) -> None:
@@ -354,8 +358,16 @@ payloads = st.builds(
     st.fixed_dictionaries(
         {
             "App": field("Wallet"),
-            "Title": field("Apple Card", "Daily\u00a0Cash", "Savings Account", "Order placed"),
-            "Subtitle": field("Example Diner, Springfield, IL", "Weekly Spending", ""),
+            "Title": field(
+                "Apple Card",
+                "Daily\u00a0Cash",
+                "Savings Account",
+                "Order placed",
+                "Verification Required",
+            ),
+            "Subtitle": field(
+                "Example Diner, Springfield, IL", "Weekly Spending", "Upcoming Transactions", ""
+            ),
             "Body": st.from_regex(PURCHASE_BODY, fullmatch=True) | field("$12.34"),
             "Date": dates | field("2026-10-28T12:30:00-04:00"),
         }

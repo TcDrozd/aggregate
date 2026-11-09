@@ -133,4 +133,8 @@ class WalletNotification:
             return "spending_summary"
         if title.startswith("Order ") or title == "Problem with your order":
             return "order_tracking"
+        if title == "Verification Required":
+            return "card_verification"  # a card in Wallet needs setup steps
+        if subtitle == "Upcoming Transactions":
+            return "upcoming_charges"  # a count of predicted charges, no amount or merchant
         return None
