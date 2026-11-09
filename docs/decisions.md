@@ -80,3 +80,15 @@ Agreed changes to, and interpretations of, `docs/SPEC.md`. Newest last. `docs/SP
 - "Alphanumeric" means Unicode letters and digits, so `Café` keys as `café`.
 - Apostrophes include the curly and modifier-letter forms, plus full-width ones through NFKC.
 - NFKC runs a second time after apostrophes are removed, which keeps the key unchanged when applied twice.
+
+## 2026-11-09 · Wallet notification connector
+
+**D35. Titles and subtitles are compared with whitespace squashed.** Real captures show Apple writing `Daily Cash` with a no-break space (U+00A0); an exact match would have sent every Daily Cash deposit to review. Runs of any whitespace become one space before the known-non-transaction rules, the shape check, merchant parsing and `account_ref`, so a link on `Apple Card` can't miss over an invisible character. The raw payload and the dedupe key keep the original text.
+
+**D36. The dedupe key is defined for every JSON object.** It's computed before the raw event is stored, so it must never fail. Nulls read as empty strings, any other non-string value as its compact, key-sorted JSON, and when two keys normalize to the same field the later one wins. A golden-value test pins the recipe, because changing it orphans every stored Wallet observation.
+
+**D37. The purchase shape also needs a title and well-formed fields.** The title becomes `account_ref`, which can't be empty. A payload where one of the five fields arrives twice under different spellings, or as a number, list or object, is `unknown_shape` rather than guessed at. The body must match as a whole string in ASCII digits: in Python, a regex `$` also accepts a trailing newline, and `\d` accepts other scripts' digits.
+
+**D38. An unusable date is `unclassified` with its own reason, `invalid_date`.** That covers a missing date, an unparseable one, or one without an offset. It's the likely symptom of a Shortcut whose date format setting changed, so the review queue names it directly.
+
+**D39. Real captures are one labelled file.** `tests/fixtures/private/wallet_captures.jsonl` holds one `{"expect": ..., "payload": ...}` per line, so every real capture is a regression test with a human-checked label. It's gitignored and outside the Docker build context.
