@@ -319,24 +319,26 @@ A test notification sent from another app, which must be ignored:
 
 **Rules, applied in order:**
 
-1. **Normalize keys:** strip, lowercase, spaces to underscores. ` Recipient  ` (trailing space) becomes `recipient`, and `Associated Content` becomes `associated_content`. Missing keys read as empty strings.
-2. **Dedupe key:** SHA-256 of `app|title|subtitle|body|date` after normalization.
+1. **Normalize keys:** strip, lowercase, spaces to underscores. ` Recipient  ` (trailing space) becomes `recipient`, and `Associated Content` becomes `associated_content`. Missing keys and nulls read as empty strings; any other non-string value reads as its compact JSON. When two keys normalize to the same field, the later one wins.
+2. **Dedupe key:** SHA-256 of `app|title|subtitle|body|date` after normalization, with values hashed verbatim.
 3. **App gate:** any `app` other than `Wallet` → `ignored`, reason `non_wallet_app`. The Shortcut already filters by app; this also drops Home Assistant tests.
-4. **Known non-transactions** → `ignored`, defined by real captures (Nov 2026). The payload is still stored, so a later parser version can reparse them.
+4. **Known non-transactions** → `ignored`, defined by real captures (Nov 2026). The payload is still stored, so a later parser version can reparse them. From here on, `title` and `subtitle` are compared with every run of whitespace squashed to one space, because Apple writes `Daily Cash` with a no-break space (U+00A0).
    - `title` is `Daily Cash` → `daily_cash` (deposits go to the Apple Savings account, not the card)
    - `title` is `Savings Account` → `savings` (interest and other Savings notices)
    - `subtitle` is `Weekly Spending` or `Monthly Spending` → `spending_summary`
    - `title` starts with `Order ` or is `Problem with your order` → `order_tracking` (Apple Pay order tracking)
-5. **Purchase shape:** `body` matches `^\$(\d{1,3}(,\d{3})*|\d+)\.\d{2}$` and `subtitle` is not empty. Anything else → `unclassified`, reason `unknown_shape`.
+   - `title` is `Verification Required` → `card_verification` (a card in Wallet needs setup steps)
+   - `subtitle` is `Upcoming Transactions` → `upcoming_charges` (iOS 27's count of predicted charges, with no amount or merchant)
+5. **Purchase shape:** the whole `body` matches `^\$(\d{1,3}(,\d{3})*|\d+)\.\d{2}$` in ASCII digits, `title` and `subtitle` are not empty, and each of the five fields arrived at most once, as a string. Anything else → `unclassified`, reason `unknown_shape`.
 6. **Amount:** parse with `Decimal` and store negative cents: `$12.34` → `-1234`.
 7. **Merchant and location:** match `^(.+), ([^,]+), ([A-Z]{2})$` against `subtitle`. On a match, the merchant is group 1 and location is `city, region`. Otherwise the whole subtitle is the merchant and location is null.
 8. **Merchant key:** NFKC, curly quotes to straight, apostrophes removed, lowercase, runs of non-alphanumerics to one space, trimmed: `example diner`; `Joe’s Diner` → `joes diner`, so it matches a statement's `JOES DINER`.
-9. **Dates:** `occurred_at` is `date` converted to UTC; `local_date` is its date in the payload's own offset (`2026-10-28`).
-10. **Observation:** status `pending`, kind `purchase`, `account_ref` = `title`, `external_id` = the dedupe key.
+9. **Dates:** `occurred_at` is `date` converted to UTC; `local_date` is its date in the payload's own offset (`2026-10-28`). A `date` that isn't ISO 8601 with an offset → `unclassified`, reason `invalid_date`.
+10. **Observation:** status `pending`, kind `purchase`, `account_ref` = `title` (whitespace squashed), `external_id` = the dedupe key.
 
-Stay unclassified until real captures define them: iOS 27 upcoming-charge predictions, payments, refunds and declines. Chase Apple Pay notifications arrive in the purchase shape with title `Chase`; that title is linked with role `signal`, so they are stored as evidence and never create transactions. Plaid is Chase's ledger source (Phase 3).
+Stay unclassified until real captures define them: payments, refunds and declines. Chase Apple Pay notifications arrive in the purchase shape with title `Chase`; that title is linked with role `signal`, so they are stored as evidence and never create transactions. Plaid is Chase's ledger source (Phase 3).
 
-**Fixtures** in `tests/fixtures/wallet/` are synthetic copies of real shapes. Real captures live in the gitignored `tests/fixtures/private/`, and a `private` pytest marker runs them locally and skips them in CI.
+**Fixtures** in `tests/fixtures/wallet/` are synthetic copies of real shapes. Real captures live in the gitignored `tests/fixtures/private/wallet_captures.jsonl`, one labelled payload per line (`{"expect": "parsed" or "STATUS/REASON", "payload": {...}}`), and a `private` pytest marker runs them locally and skips them in CI.
 
 | File | Origin | Expected |
 | --- | --- | --- |
@@ -354,6 +356,8 @@ Stay unclassified until real captures define them: iOS 27 upcoming-charge predic
 | `savings_interest.json` | synthetic, real shape | ignored, `savings` |
 | `spending_summary.json` | synthetic, real shape | ignored, `spending_summary` |
 | `order_tracking.json` | synthetic, real shape | ignored, `order_tracking` |
+| `card_verification.json` | synthetic, real shape | ignored, `card_verification` |
+| `upcoming_charges.json` | synthetic, real shape | ignored, `upcoming_charges` |
 
 ## Reconciliation
 
@@ -540,6 +544,6 @@ Collect the four inputs before coding; the open questions can wait for real data
 
 **Open questions:**
 
-- Shapes of non-purchase Wallet notifications: four are defined (see the Wallet connector rules); payments, refunds, declines and upcoming-charge predictions still come from the review queue.
+- Shapes of non-purchase Wallet notifications: six are defined (see the Wallet connector rules); payments, refunds and declines still come from the review queue. None appeared in two weeks of captures (Oct 28 to Nov 9).
 - Phase 2 void window: the statement close date, or a fixed number of days.
 - Merchant similarity threshold for Phase 2, tuned on real statement data. Wallet subtitles are sometimes truncated raw descriptors, which may match the statement's Description better than its clean Merchant.
